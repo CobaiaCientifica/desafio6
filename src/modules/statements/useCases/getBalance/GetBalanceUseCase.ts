@@ -2,7 +2,9 @@ import { inject, injectable } from "tsyringe";
 
 import { IUsersRepository } from "../../../users/repositories/IUsersRepository";
 import { Statement } from "../../entities/Statement";
+import { Transfer } from "../../entities/Transfer";
 import { IStatementsRepository } from "../../repositories/IStatementsRepository";
+import { ITransfersRepository } from "../../repositories/ITransfersRepository";
 import { GetBalanceError } from "./GetBalanceError";
 
 interface IRequest {
@@ -11,6 +13,16 @@ interface IRequest {
 
 interface IResponse {
   statement: Statement[];
+  transfer: Transfer[];
+  balance: number;
+}
+interface IDataStatement {
+  statement: Statement[];
+  balance: number;
+}
+
+interface IDataTransfer {
+  statement: Transfer[];
   balance: number;
 }
 
@@ -22,6 +34,9 @@ export class GetBalanceUseCase {
 
     @inject('UsersRepository')
     private usersRepository: IUsersRepository,
+
+    @inject('TransfersRepository')
+    private transfersRepository: ITransfersRepository
   ) {}
 
   async execute({ user_id }: IRequest): Promise<IResponse> {
@@ -34,8 +49,19 @@ export class GetBalanceUseCase {
     const balance = await this.statementsRepository.getUserBalance({
       user_id,
       with_statement: true
-    });
+    }) as IDataStatement;
 
-    return balance as IResponse;
+    const transfers = await this.transfersRepository.getUserBalance({
+      user_id,
+      with_statement: true
+    }) as IDataTransfer;
+
+    const returnData = {
+      statement: balance.statement,
+      transfer: transfers.statement,
+      balance: Number.parseFloat(balance.balance.toString()) + transfers.balance
+    }
+
+    return returnData as IResponse;
   }
 }
